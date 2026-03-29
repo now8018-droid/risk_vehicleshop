@@ -154,6 +154,10 @@ end
 
 function RecheckJobFramework()
 
+    local prevJob = currentJob
+
+    local prevGrade = currentJobGrade
+
     if currentFramework == "qbcore" then
 
         local c = exports['qb-core']:GetCoreObject()
@@ -203,6 +207,18 @@ function RecheckJobFramework()
             end
 
         end
+
+    end
+
+    if (prevJob ~= currentJob or prevGrade ~= currentJobGrade) and currentJob then
+
+        if Config.Debug then
+
+            print("debug: job changed on re-check -> respawn shops/blips")
+
+        end
+
+        RespawnAllShopEntities()
 
     end
 
@@ -269,6 +285,8 @@ CreateThread(function()
                               tostring(currentJobGrade))
 
                 end
+
+                RespawnAllShopEntities()
 
             end
 
@@ -353,6 +371,8 @@ CreateThread(function()
                               " grade -> " .. tostring(currentJobGrade))
 
                 end
+
+                RespawnAllShopEntities()
 
             end
 
