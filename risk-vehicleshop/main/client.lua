@@ -54,6 +54,8 @@ local lastPreviewSpawnTime = 0
 
 local previewSpawnInProgress = false
 
+local previewSpawnCooldownMs = 120
+
 local gtaColours = {
 
     {r = 255, g = 255, b = 246, id = 111}, {r = 13, g = 17, b = 22, id = 0},
@@ -965,9 +967,6 @@ function OpenVehicleShop(shopIndex)
             lastVehIndex = 0
 
             CreateThread(function()
-
-                Wait(0)
-
                 SpawnPreviewVehicle(0, 0)
 
             end)
@@ -1144,7 +1143,7 @@ function SpawnPreviewVehicle(catIndex, vehIndex)
 
     local now = GetGameTimer()
 
-    if now - lastPreviewSpawnTime < 500 then return end
+    if now - lastPreviewSpawnTime < previewSpawnCooldownMs then return end
 
     lastPreviewSpawnTime = now
 
