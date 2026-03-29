@@ -929,9 +929,6 @@ function OpenVehicleShop(shopIndex)
     end
 
     SetNuiFocus(true, true)
-
-    Wait(0)
-
     SetNuiFocusKeepInput(false)
 
     if Config.Debug then
@@ -941,8 +938,6 @@ function OpenVehicleShop(shopIndex)
                   shop.label)
 
     end
-
-    SetupCamera(shopIndex)
 
     previewHeading = shop.previewCoords.w
 
@@ -958,22 +953,25 @@ function OpenVehicleShop(shopIndex)
 
     })
 
-    if #shop.categories > 0 then
+    CreateThread(function()
 
-        if #shop.categories[1].vehicles > 0 then
+        SetupCamera(shopIndex)
 
-            lastCatIndex = 0
+        if #shop.categories > 0 then
 
-            lastVehIndex = 0
+            if #shop.categories[1].vehicles > 0 then
 
-            CreateThread(function()
+                lastCatIndex = 0
+
+                lastVehIndex = 0
+
                 SpawnPreviewVehicle(0, 0)
 
-            end)
+            end
 
         end
 
-    end
+    end)
 
 end
 
