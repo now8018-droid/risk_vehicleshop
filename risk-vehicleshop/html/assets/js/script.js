@@ -121,7 +121,8 @@ $(document).ready(function () {
             isUiOpen = true
             $("#shopContainer").show()
             $("#shopContainer").focus()
-            $("#searchInput").focus()
+            $("#searchInput").val("").trigger("input")
+            $("#searchInput").blur()
             window.focus()
             document.body.focus()
             currentStats = {

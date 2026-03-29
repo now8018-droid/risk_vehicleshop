@@ -956,7 +956,7 @@ function OpenVehicleShop(shopIndex)
     end
 
     SetNuiFocus(true, true)
-    SetNuiFocusKeepInput(false)
+    SetNuiFocusKeepInput(true)
 
     if Config.Debug then
 
