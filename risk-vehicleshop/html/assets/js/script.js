@@ -20,7 +20,13 @@ let currentStats = {
 }
 let currentPrice = 0
 let currentVehicle = { spawnName: "", price: 0 }
+let currentCategories = []
 let isUiOpen = false
+let previewSelectDebounce = null
+let rotateFlushTimer = null
+let pendingRotateDx = 0
+let wheelFlushTimer = null
+let pendingWheelDelta = 0
 
 const primaryColorData = [
     { r: 255, g: 255, b: 246 },
@@ -119,6 +125,7 @@ $(document).ready(function () {
         let data = event.data
         if (data.action === "openUI") {
             isUiOpen = true
+            currentCategories = data.categories || []
             $("#shopContainer").show()
             $("#shopContainer").focus()
             $("#searchInput").val("").trigger("input")
@@ -147,17 +154,17 @@ $(document).ready(function () {
             $(".vehicle-info-flex").eq(3).find(".vehicle-info-percent").text("")
             setCircleFill(4, 0)
             $(".vehicle-info-flex").eq(4).find(".vehicle-info-percent").text("0")
-            buildCategories(data.categories)
-            loadVehicles(0, data.categories)
-            $("#car-list-amount").text(data.categories[0].vehicles.length)
-            $("#main-category").text(data.categories[0].name.toUpperCase())
-            if (data.categories[0].vehicles.length > 0) {
-                let newPrice = data.categories[0].vehicles[0].price
+            buildCategories(currentCategories)
+            loadVehicles(0, currentCategories)
+            $("#car-list-amount").text(currentCategories[0].vehicles.length)
+            $("#main-category").text(currentCategories[0].name.toUpperCase())
+            if (currentCategories[0].vehicles.length > 0) {
+                let newPrice = currentCategories[0].vehicles[0].price
                 currentVehicle = {
-                    spawnName: data.categories[0].vehicles[0].spawnName,
+                    spawnName: currentCategories[0].vehicles[0].spawnName,
                     price: newPrice
                 }
-                $("#main-brand").text(data.categories[0].vehicles[0].displayName)
+                $("#main-brand").text(currentCategories[0].vehicles[0].displayName)
                 $("#main-model").text("")
                 animatePriceChange(currentPrice, newPrice)
                 setTimeout(() => { currentPrice = newPrice }, 500)
@@ -304,7 +311,61 @@ $(document).ready(function () {
             }
         })
     })
+
+    $(document).on("click", ".box-category", function () {
+        if (!currentCategories || currentCategories.length === 0) return
+        $(".box-category").removeClass("box-category-active")
+        $(this).addClass("box-category-active")
+        let i = $(this).data("catindex")
+        postPreviewSelection(i, 0)
+        loadVehicles(i, currentCategories)
+        $("#car-list-amount").text(currentCategories[i].vehicles.length)
+        $("#main-category").text(currentCategories[i].name.toUpperCase())
+        if (currentCategories[i].vehicles.length > 0) {
+            let newPrice = currentCategories[i].vehicles[0].price
+            currentVehicle = {
+                spawnName: currentCategories[i].vehicles[0].spawnName,
+                price: newPrice
+            }
+            $("#main-brand").text(currentCategories[i].vehicles[0].displayName)
+            $("#main-model").text("")
+            animatePriceChange(currentPrice, newPrice)
+            setTimeout(() => { currentPrice = newPrice }, 500)
+        } else {
+            animatePriceChange(currentPrice, 0)
+            setTimeout(() => { currentPrice = 0 }, 500)
+            currentVehicle = { spawnName: "", price: 0 }
+            $("#main-brand").text("")
+            $("#main-model").text("")
+        }
+    })
+
+    $(document).on("click", ".box-car", function () {
+        if (!currentCategories || currentCategories.length === 0) return
+        $(".box-car").removeClass("box-car-active")
+        $(this).addClass("box-car-active")
+        let cIndex = $(this).data("catindex")
+        let vIndex = $(this).data("vehindex")
+        let veh = currentCategories[cIndex].vehicles[vIndex]
+        $("#main-category").text(currentCategories[cIndex].name.toUpperCase())
+        $("#main-brand").text(veh.displayName)
+        $("#main-model").text("")
+        animatePriceChange(currentPrice, veh.price)
+        setTimeout(() => { currentPrice = veh.price }, 500)
+        currentVehicle = {
+            spawnName: veh.spawnName,
+            price: veh.price
+        }
+        postPreviewSelection(cIndex, vIndex)
+    })
 })
+
+function postPreviewSelection(catIndex, vehIndex) {
+    clearTimeout(previewSelectDebounce)
+    previewSelectDebounce = setTimeout(() => {
+        $.post(`https://${resourceName}/null`, JSON.stringify({ catIndex, vehIndex }))
+    }, 80)
+}
 
 function buildColorPickers() {
     let primaryContainer = $(".colors1-flex")
@@ -385,32 +446,6 @@ function buildCategories(categories) {
     $(".box-category").each(function () {
         $(this).prepend(svgCategory)
     })
-    $(".box-category").click(function () {
-        $(".box-category").removeClass("box-category-active")
-        $(this).addClass("box-category-active")
-        let i = $(this).data("catindex")
-        $.post(`https://${resourceName}/null`, JSON.stringify({ catIndex: i, vehIndex: 0 }))
-        loadVehicles(i, categories)
-        $("#car-list-amount").text(categories[i].vehicles.length)
-        $("#main-category").text(categories[i].name.toUpperCase())
-        if (categories[i].vehicles.length > 0) {
-            let newPrice = categories[i].vehicles[0].price
-            currentVehicle = {
-                spawnName: categories[i].vehicles[0].spawnName,
-                price: newPrice
-            }
-            $("#main-brand").text(categories[i].vehicles[0].displayName)
-            $("#main-model").text("")
-            animatePriceChange(currentPrice, newPrice)
-            setTimeout(() => { currentPrice = newPrice }, 500)
-        } else {
-            animatePriceChange(currentPrice, 0)
-            setTimeout(() => { currentPrice = 0 }, 500)
-            currentVehicle = { spawnName: "", price: 0 }
-            $("#main-brand").text("")
-            $("#main-model").text("")
-        }
-    })
     $(".box-category").first().addClass("box-category-active")
 }
 
@@ -458,26 +493,6 @@ function loadVehicles(catIndex, categories) {
     $(".box-car").each(function () {
         $(this).prepend(svgCar)
     })
-    $(".box-car").click(function () {
-        $(".box-car").removeClass("box-car-active")
-        $(this).addClass("box-car-active")
-        let cIndex = $(this).data("catindex")
-        let vIndex = $(this).data("vehindex")
-        let veh = categories[cIndex].vehicles[vIndex]
-        $("#main-category").text(categories[cIndex].name.toUpperCase())
-        $("#main-brand").text(veh.displayName)
-        $("#main-model").text("")
-        animatePriceChange(currentPrice, veh.price)
-        setTimeout(() => { currentPrice = veh.price }, 500)
-        currentVehicle = {
-            spawnName: veh.spawnName,
-            price: veh.price
-        }
-        $.post(`https://${resourceName}/null`, JSON.stringify({
-            catIndex: cIndex,
-            vehIndex: vIndex
-        }))
-    })
     if (vehicles.length > 0) {
         $(".box-car").first().addClass("box-car-active")
     }
@@ -505,7 +520,14 @@ document.addEventListener('mousemove', (e) => {
     if (!isUiOpen || !rotating) return
     const dx = e.clientX - lastX
     lastX = e.clientX
-    $.post(`https://${resourceName}/uiRotate`, JSON.stringify({ dx }))
+    pendingRotateDx += dx
+    if (!rotateFlushTimer) {
+        rotateFlushTimer = setTimeout(() => {
+            $.post(`https://${resourceName}/uiRotate`, JSON.stringify({ dx: pendingRotateDx }))
+            pendingRotateDx = 0
+            rotateFlushTimer = null
+        }, 16)
+    }
 })
 
 
@@ -535,6 +557,13 @@ document.addEventListener('wheel', (e) => {
   }
 
 
-  $.post(`https://${resourceName}/uiWheel`, JSON.stringify({ delta: e.deltaY }))
+  pendingWheelDelta += e.deltaY
+  if (!wheelFlushTimer) {
+    wheelFlushTimer = setTimeout(() => {
+      $.post(`https://${resourceName}/uiWheel`, JSON.stringify({ delta: pendingWheelDelta }))
+      pendingWheelDelta = 0
+      wheelFlushTimer = null
+    }, 30)
+  }
   e.preventDefault() 
 }, { passive: false })

@@ -464,6 +464,9 @@ end)
 
 CreateThread(function()
 
+    local lastUiDistanceCheck = 0
+    local isOutsideShopRange = false
+
     while true do
 
         Wait(60000)
@@ -636,6 +639,9 @@ end
 
 CreateThread(function()
 
+    local lastUiDistanceCheck = 0
+    local isOutsideShopRange = false
+
     while true do
 
         local sleep = 1000
@@ -736,16 +742,25 @@ CreateThread(function()
             EnableControlAction(0, 2, true)
             if activeShopIndex then
 
-                local shopData = shopRuntimeCache[activeShopIndex]
+                local now = GetGameTimer()
+                if now - lastUiDistanceCheck >= 250 then
+                    lastUiDistanceCheck = now
 
-                local shopCoords = shopData and shopData.coordsVec3 or
-                                       vector3(Config.Shops[activeShopIndex].coords.x,
-                                               Config.Shops[activeShopIndex].coords.y,
-                                               Config.Shops[activeShopIndex].coords.z)
+                    local shopData = shopRuntimeCache[activeShopIndex]
 
-                local dist = #(coords - shopCoords)
+                    local shopCoords = shopData and shopData.coordsVec3 or
+                                           vector3(Config.Shops[activeShopIndex].coords.x,
+                                                   Config.Shops[activeShopIndex].coords.y,
+                                                   Config.Shops[activeShopIndex].coords.z)
 
-                if dist > 3.0 then CloseVehicleShop() end
+                    local dist = #(coords - shopCoords)
+                    isOutsideShopRange = (dist > 3.0)
+                end
+
+                if isOutsideShopRange then
+                    CloseVehicleShop()
+                    isOutsideShopRange = false
+                end
 
             end
 
