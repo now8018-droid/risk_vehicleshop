@@ -44,6 +44,8 @@ local shopBlips = {}
 
 local testDriveShopIndex = nil
 
+local shopRuntimeCache = {}
+
 local lastCatIndex = 0
 
 local lastVehIndex = 0
@@ -227,6 +229,28 @@ function RecheckJobFramework()
     end
 
 end
+
+local function BuildShopRuntimeCache()
+
+    shopRuntimeCache = {}
+
+    for i, shop in pairs(Config.Shops or {}) do
+
+        if shop and shop.coords then
+
+            shopRuntimeCache[i] = {
+
+                coordsVec3 = vector3(shop.coords.x, shop.coords.y, shop.coords.z)
+
+            }
+
+        end
+
+    end
+
+end
+
+BuildShopRuntimeCache()
 
 AddEventHandler("onResourceStart", function(res)
 
@@ -626,11 +650,12 @@ CreateThread(function()
 
                 if HasClientJobAccess(shop.jobs) then
 
-                    local dist = #(coords -
+                    local shopData = shopRuntimeCache[i]
 
-                                     vector3(shop.coords.x, shop.coords.y,
+                    local shopCoords = shopData and shopData.coordsVec3 or
+                                           vector3(shop.coords.x, shop.coords.y, shop.coords.z)
 
-                                             shop.coords.z))
+                    local dist = #(coords - shopCoords)
 
                     if dist < 20.0 then
 
@@ -711,13 +736,12 @@ CreateThread(function()
             EnableControlAction(0, 2, true)
             if activeShopIndex then
 
-                local shopCoords = vector3(
+                local shopData = shopRuntimeCache[activeShopIndex]
 
-                                       Config.Shops[activeShopIndex].coords.x,
-
-                                       Config.Shops[activeShopIndex].coords.y,
-
-                                       Config.Shops[activeShopIndex].coords.z)
+                local shopCoords = shopData and shopData.coordsVec3 or
+                                       vector3(Config.Shops[activeShopIndex].coords.x,
+                                               Config.Shops[activeShopIndex].coords.y,
+                                               Config.Shops[activeShopIndex].coords.z)
 
                 local dist = #(coords - shopCoords)
 
