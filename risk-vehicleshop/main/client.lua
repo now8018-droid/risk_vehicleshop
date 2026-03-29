@@ -14,6 +14,8 @@ local previewCam = nil
 
 local previewHeading = nil
 
+local previewTargetHeading = nil
+
 local testDriveVehicle = nil
 
 local selectedVehicleSpawnName = nil
@@ -725,6 +727,8 @@ CreateThread(function()
 
             EngineSoundPreview()
 
+            RotatePreviewVehicle()
+
             UpdateCameraZoom()
 
         end
@@ -773,8 +777,7 @@ RegisterNUICallback("uiRotate", function(data, cb)
 
         local dx = tonumber(data.dx) or 0
 
-        previewHeading = previewHeading + (dx * 0.15)
-        SetEntityHeading(previewVehicle, previewHeading)
+        previewTargetHeading = (previewTargetHeading or previewHeading or 0.0) + (dx * 0.15)
 
     end
 
@@ -940,6 +943,8 @@ function OpenVehicleShop(shopIndex)
     end
 
     previewHeading = shop.previewCoords.w
+
+    previewTargetHeading = previewHeading
 
     currentZoomDistance = shop.defaultZoomDistance or 7.0
 
@@ -1381,7 +1386,25 @@ function SendVehicleStatsToUI(vehicle, vehData)
 
 end
 
-function RotatePreviewVehicle() end
+function RotatePreviewVehicle()
+
+    if not previewVehicle or previewHeading == nil or previewTargetHeading == nil then
+
+        return
+
+    end
+
+    local diff = previewTargetHeading - previewHeading
+
+    if diff > 180.0 then diff = diff - 360.0 end
+
+    if diff < -180.0 then diff = diff + 360.0 end
+
+    previewHeading = previewHeading + (diff * 0.22)
+
+    SetEntityHeading(previewVehicle, previewHeading)
+
+end
 
 function EngineSoundPreview()
 
