@@ -58,6 +58,15 @@ function rgbToHex(r, g, b) {
     }).join("")
 }
 
+function escapeHtml(value) {
+    return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+}
+
 function setCircleFill(circleIndex, fill) {
     if (fill < 0) fill = 0
     if (fill > 100) fill = 100
@@ -440,7 +449,7 @@ function buildCategories(categories) {
     const categoryHtml = categories.map((cat, i) => (
         `<div class="box-category" data-catindex="${i}" style="opacity:0;animation:fadeInCar 0.6s ease forwards;animation-delay:${(0.1 * i)}s">
             ${svgCategory}
-            <p class="category-name">${cat.name}</p>
+            <p class="category-name">${escapeHtml(cat.name)}</p>
         </div>`
     )).join("")
     $("#categoriesContainer").html(categoryHtml)
@@ -451,13 +460,16 @@ function loadVehicles(catIndex, categories) {
     let vehicles = categories[catIndex].vehicles
     const vehicleHtml = vehicles.map((veh, index) => {
         let hasImage = (veh.image && veh.image !== "")
-        const searchText = (veh.displayName || "").toLowerCase().replace(/"/g, '&quot;')
+        const safeCategoryName = escapeHtml(categories[catIndex].name)
+        const safeDisplayName = escapeHtml(veh.displayName)
+        const safeImage = escapeHtml(veh.image || "")
+        const searchText = escapeHtml((veh.displayName || "").toLowerCase())
         return (
-            `<div class="box-car" data-vehindex="${index}" data-catindex="${catIndex}" data-search="${searchText}">
+            `<div class="box-car" data-vehindex="${index}" data-catindex="${catIndex}" data-search="${searchText}" style="opacity:0;animation:fadeInCar 0.6s ease forwards;animation-delay:${(0.1 * index)}s">
                 <div class="line-car"></div>
                 ${svgCar}
                 ${hasImage
-                ? `<img class="car-icn-real" src="../html/assets/img/cars/${veh.image}" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">`
+                ? `<img class="car-icn-real" src="../html/assets/img/cars/${safeImage}" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">`
                 : ``
             }
                 <svg class="car-icn" style="display:${hasImage ? 'none' : 'block'};" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 53 19">
@@ -467,8 +479,8 @@ function loadVehicles(catIndex, categories) {
                 </svg>
                 <div class="box-car-cnt">
                     <div class="car-cnt-title-flex">
-                        <p class="title1-car">${categories[catIndex].name}</p>
-                        <p class="title2-car">${veh.displayName}</p>
+                        <p class="title1-car">${safeCategoryName}</p>
+                        <p class="title2-car">${safeDisplayName}</p>
                     </div>
                     <div class="car-price-flex">
                         <div class="line-price"></div>
@@ -482,13 +494,6 @@ function loadVehicles(catIndex, categories) {
         )
     }).join("")
     $("#carsContainer").html(vehicleHtml)
-    $(".box-car").each(function (idx) {
-        $(this).css({
-            'opacity': '0',
-            'animation': 'fadeInCar 0.6s ease forwards',
-            'animation-delay': (0.1 * idx) + 's'
-        })
-    })
     if (vehicles.length > 0) {
         $(".box-car").first().addClass("box-car-active")
     }
