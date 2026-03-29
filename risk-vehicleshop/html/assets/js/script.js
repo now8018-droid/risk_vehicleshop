@@ -155,24 +155,34 @@ $(document).ready(function () {
             setCircleFill(4, 0)
             $(".vehicle-info-flex").eq(4).find(".vehicle-info-percent").text("0")
             buildCategories(currentCategories)
-            loadVehicles(0, currentCategories)
-            $("#car-list-amount").text(currentCategories[0].vehicles.length)
-            $("#main-category").text(currentCategories[0].name.toUpperCase())
-            if (currentCategories[0].vehicles.length > 0) {
-                let newPrice = currentCategories[0].vehicles[0].price
-                currentVehicle = {
-                    spawnName: currentCategories[0].vehicles[0].spawnName,
-                    price: newPrice
+            if (currentCategories.length > 0) {
+                loadVehicles(0, currentCategories)
+                $("#car-list-amount").text(currentCategories[0].vehicles.length)
+                $("#main-category").text(currentCategories[0].name.toUpperCase())
+                if (currentCategories[0].vehicles.length > 0) {
+                    let newPrice = currentCategories[0].vehicles[0].price
+                    currentVehicle = {
+                        spawnName: currentCategories[0].vehicles[0].spawnName,
+                        price: newPrice
+                    }
+                    $("#main-brand").text(currentCategories[0].vehicles[0].displayName)
+                    $("#main-model").text("")
+                    animatePriceChange(currentPrice, newPrice)
+                    setTimeout(() => { currentPrice = newPrice }, 500)
+                } else {
+                    animatePriceChange(currentPrice, 0)
+                    setTimeout(() => { currentPrice = 0 }, 500)
+                    $("#main-brand").text("")
+                    $("#main-model").text("")
                 }
-                $("#main-brand").text(currentCategories[0].vehicles[0].displayName)
-                $("#main-model").text("")
-                animatePriceChange(currentPrice, newPrice)
-                setTimeout(() => { currentPrice = newPrice }, 500)
             } else {
-                animatePriceChange(currentPrice, 0)
-                setTimeout(() => { currentPrice = 0 }, 500)
+                $("#carsContainer").empty()
+                $("#car-list-amount").text("0")
+                $("#main-category").text("")
                 $("#main-brand").text("")
                 $("#main-model").text("")
+                animatePriceChange(currentPrice, 0)
+                setTimeout(() => { currentPrice = 0 }, 500)
             }
         }
         if (data.action === "closeUI") {
@@ -303,7 +313,7 @@ $(document).ready(function () {
     $("#searchInput").on("input", function () {
         let val = $(this).val().toLowerCase()
         $(".box-car").each(function () {
-            let txt = $(this).find(".title2-car").text().toLowerCase()
+            let txt = ($(this).data("search") || "").toString()
             if (txt.indexOf(val) !== -1) {
                 $(this).show()
             } else {
@@ -427,36 +437,25 @@ function buildColorPickers() {
 }
 
 function buildCategories(categories) {
-    $("#categoriesContainer").empty()
-    $.each(categories, (i, cat) => {
-        let catDiv = (
-            `<div class="box-category" data-catindex="${i}">
-                <p class="category-name">${cat.name}</p>
-            </div>`
-        )
-        $("#categoriesContainer").append(catDiv)
-    })
-    $(".box-category").each((idx, el) => {
-        $(el).css({
-            'opacity': '0',
-            'animation': 'fadeInCar 0.6s ease forwards',
-            'animation-delay': (0.1 * idx) + 's'
-        })
-    })
-    $(".box-category").each(function () {
-        $(this).prepend(svgCategory)
-    })
+    const categoryHtml = categories.map((cat, i) => (
+        `<div class="box-category" data-catindex="${i}" style="opacity:0;animation:fadeInCar 0.6s ease forwards;animation-delay:${(0.1 * i)}s">
+            ${svgCategory}
+            <p class="category-name">${cat.name}</p>
+        </div>`
+    )).join("")
+    $("#categoriesContainer").html(categoryHtml)
     $(".box-category").first().addClass("box-category-active")
 }
 
 function loadVehicles(catIndex, categories) {
-    $("#carsContainer").empty()
     let vehicles = categories[catIndex].vehicles
-    $.each(vehicles, (index, veh) => {
+    const vehicleHtml = vehicles.map((veh, index) => {
         let hasImage = (veh.image && veh.image !== "")
-        let html = (
-            `<div class="box-car" data-vehindex="${index}" data-catindex="${catIndex}">
+        const searchText = (veh.displayName || "").toLowerCase().replace(/"/g, '&quot;')
+        return (
+            `<div class="box-car" data-vehindex="${index}" data-catindex="${catIndex}" data-search="${searchText}">
                 <div class="line-car"></div>
+                ${svgCar}
                 ${hasImage
                 ? `<img class="car-icn-real" src="../html/assets/img/cars/${veh.image}" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">`
                 : ``
@@ -481,17 +480,14 @@ function loadVehicles(catIndex, categories) {
                 </div>
             </div>`
         )
-        $("#carsContainer").append(html)
-    })
+    }).join("")
+    $("#carsContainer").html(vehicleHtml)
     $(".box-car").each(function (idx) {
         $(this).css({
             'opacity': '0',
             'animation': 'fadeInCar 0.6s ease forwards',
             'animation-delay': (0.1 * idx) + 's'
         })
-    })
-    $(".box-car").each(function () {
-        $(this).prepend(svgCar)
     })
     if (vehicles.length > 0) {
         $(".box-car").first().addClass("box-car-active")
