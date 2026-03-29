@@ -1,8 +1,13 @@
 ESX = nil
 
 local currentFramework = nil
+local generatedPlateCache = {}
+local generatedPlateOrder = {}
+local generatedPlateCacheLimit = 2000
 
 CreateThread(function()
+
+    math.randomseed(GetGameTimer() + os.time())
 
     Wait(500)
 
@@ -34,6 +39,20 @@ end)
 
 local function strlower(s) return (s and type(s)=="string") and string.lower(s) or s end
 
+local function rememberGeneratedPlate(plate)
+
+    if generatedPlateCache[plate] then return end
+
+    generatedPlateCache[plate] = true
+    generatedPlateOrder[#generatedPlateOrder + 1] = plate
+
+    if #generatedPlateOrder > generatedPlateCacheLimit then
+        local oldest = table.remove(generatedPlateOrder, 1)
+        if oldest then generatedPlateCache[oldest] = nil end
+    end
+
+end
+
 function GeneratePlate()
 
     if Config.PlateOptions.useCustomPlateText then
@@ -54,7 +73,21 @@ function GeneratePlate()
 
         -- GTA plate text has an 8-char limit; adding one leading space helps
         -- visually center the 7-char pattern "XXX 123" on the plate.
-        return " " .. letters .. " " .. nums
+        local plate = " " .. letters .. " " .. nums
+
+        -- Reduce short-term collisions without expensive DB checks by keeping
+        -- a rolling in-memory cache of recently generated plates.
+        local tries = 0
+        while generatedPlateCache[plate] and tries < 20 do
+            tries = tries + 1
+            letters, nums = "", ""
+            for i = 1, 3 do letters = letters .. string.char(math.random(65, 90)) end
+            for i = 1, 3 do nums = nums .. tostring(math.random(0, 9)) end
+            plate = " " .. letters .. " " .. nums
+        end
+
+        rememberGeneratedPlate(plate)
+        return plate
 
     end
 
