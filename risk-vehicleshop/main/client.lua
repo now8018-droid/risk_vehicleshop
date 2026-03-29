@@ -14,6 +14,8 @@ local previewCam = nil
 
 local previewHeading = nil
 
+local previewTargetHeading = nil
+
 local testDriveVehicle = nil
 
 local selectedVehicleSpawnName = nil
@@ -42,6 +44,8 @@ local shopBlips = {}
 
 local testDriveShopIndex = nil
 
+local shopRuntimeCache = {}
+
 local lastCatIndex = 0
 
 local lastVehIndex = 0
@@ -53,6 +57,8 @@ local TEST_DRIVE_DIMENSION = 8282
 local lastPreviewSpawnTime = 0
 
 local previewSpawnInProgress = false
+
+local previewSpawnCooldownMs = 120
 
 local gtaColours = {
 
@@ -154,6 +160,10 @@ end
 
 function RecheckJobFramework()
 
+    local prevJob = currentJob
+
+    local prevGrade = currentJobGrade
+
     if currentFramework == "qbcore" then
 
         local c = exports['qb-core']:GetCoreObject()
@@ -206,7 +216,41 @@ function RecheckJobFramework()
 
     end
 
+    if (prevJob ~= currentJob or prevGrade ~= currentJobGrade) and currentJob then
+
+        if Config.Debug then
+
+            print("debug: job changed on re-check -> respawn shops/blips")
+
+        end
+
+        RespawnAllShopEntities()
+
+    end
+
 end
+
+local function BuildShopRuntimeCache()
+
+    shopRuntimeCache = {}
+
+    for i, shop in pairs(Config.Shops or {}) do
+
+        if shop and shop.coords then
+
+            shopRuntimeCache[i] = {
+
+                coordsVec3 = vector3(shop.coords.x, shop.coords.y, shop.coords.z)
+
+            }
+
+        end
+
+    end
+
+end
+
+BuildShopRuntimeCache()
 
 AddEventHandler("onResourceStart", function(res)
 
@@ -269,6 +313,8 @@ CreateThread(function()
                               tostring(currentJobGrade))
 
                 end
+
+                RespawnAllShopEntities()
 
             end
 
@@ -353,6 +399,8 @@ CreateThread(function()
                               " grade -> " .. tostring(currentJobGrade))
 
                 end
+
+                RespawnAllShopEntities()
 
             end
 
@@ -602,11 +650,12 @@ CreateThread(function()
 
                 if HasClientJobAccess(shop.jobs) then
 
-                    local dist = #(coords -
+                    local shopData = shopRuntimeCache[i]
 
-                                     vector3(shop.coords.x, shop.coords.y,
+                    local shopCoords = shopData and shopData.coordsVec3 or
+                                           vector3(shop.coords.x, shop.coords.y, shop.coords.z)
 
-                                             shop.coords.z))
+                    local dist = #(coords - shopCoords)
 
                     if dist < 20.0 then
 
@@ -687,13 +736,12 @@ CreateThread(function()
             EnableControlAction(0, 2, true)
             if activeShopIndex then
 
-                local shopCoords = vector3(
+                local shopData = shopRuntimeCache[activeShopIndex]
 
-                                       Config.Shops[activeShopIndex].coords.x,
-
-                                       Config.Shops[activeShopIndex].coords.y,
-
-                                       Config.Shops[activeShopIndex].coords.z)
+                local shopCoords = shopData and shopData.coordsVec3 or
+                                       vector3(Config.Shops[activeShopIndex].coords.x,
+                                               Config.Shops[activeShopIndex].coords.y,
+                                               Config.Shops[activeShopIndex].coords.z)
 
                 local dist = #(coords - shopCoords)
 
@@ -702,6 +750,8 @@ CreateThread(function()
             end
 
             EngineSoundPreview()
+
+            RotatePreviewVehicle()
 
             UpdateCameraZoom()
 
@@ -751,8 +801,7 @@ RegisterNUICallback("uiRotate", function(data, cb)
 
         local dx = tonumber(data.dx) or 0
 
-        previewHeading = previewHeading + (dx * 0.15)
-        SetEntityHeading(previewVehicle, previewHeading)
+        previewTargetHeading = (previewTargetHeading or previewHeading or 0.0) + (dx * 0.15)
 
     end
 
@@ -874,6 +923,20 @@ end)
 
 function OpenVehicleShop(shopIndex)
 
+    local shop = Config.Shops[shopIndex]
+
+    if not shop or not shop.previewCoords or not shop.cameraCoords or not shop.cameraRot then
+
+        if Config.Debug then
+
+            print("debug: invalid shop preview config at index " .. tostring(shopIndex))
+
+        end
+
+        return
+
+    end
+
     uiOpen = true
 
     skipAnimation = true
@@ -893,50 +956,51 @@ function OpenVehicleShop(shopIndex)
     end
 
     SetNuiFocus(true, true)
-
-    Wait(0)
-
     SetNuiFocusKeepInput(false)
 
     if Config.Debug then
 
         print("debug: vehicle shop ui opened -> " ..
 
-                  Config.Shops[shopIndex].label)
+                  shop.label)
 
     end
 
-    SetupCamera(shopIndex)
+    previewHeading = shop.previewCoords.w
 
-    previewHeading = Config.Shops[shopIndex].previewCoords.w
+    previewTargetHeading = previewHeading
 
-    currentZoomDistance = Config.Shops[shopIndex].defaultZoomDistance or 7.0
+    currentZoomDistance = shop.defaultZoomDistance or 7.0
 
-    targetZoomDistance = Config.Shops[shopIndex].defaultZoomDistance or 7.0
+    targetZoomDistance = shop.defaultZoomDistance or 7.0
 
     SendNUIMessage({
 
         action = "openUI",
 
-        categories = Config.Shops[shopIndex].categories
+        categories = shop.categories
 
     })
 
-    Wait(300)
+    CreateThread(function()
 
-    if #Config.Shops[shopIndex].categories > 0 then
+        SetupCamera(shopIndex)
 
-        if #Config.Shops[shopIndex].categories[1].vehicles > 0 then
+        if #shop.categories > 0 then
 
-            lastCatIndex = 0
+            if #shop.categories[1].vehicles > 0 then
 
-            lastVehIndex = 0
+                lastCatIndex = 0
 
-            SpawnPreviewVehicle(0, 0)
+                lastVehIndex = 0
+
+                SpawnPreviewVehicle(0, 0)
+
+            end
 
         end
 
-    end
+    end)
 
 end
 
@@ -990,21 +1054,35 @@ end
 
 function SetupCamera(shopIndex)
 
+    local shop = Config.Shops[shopIndex]
+
+    if not shop or not shop.cameraCoords or not shop.cameraRot then
+
+        if Config.Debug then
+
+            print("debug: invalid camera config for shop " .. tostring(shopIndex))
+
+        end
+
+        return
+
+    end
+
     if not previewCam then
 
         previewCam = CreateCam("DEFAULT_SCRIPTED_CAMERA", true)
 
-        SetCamCoord(previewCam, Config.Shops[shopIndex].cameraCoords.x,
+        SetCamCoord(previewCam, shop.cameraCoords.x,
 
-                    Config.Shops[shopIndex].cameraCoords.y,
+                    shop.cameraCoords.y,
 
-                    Config.Shops[shopIndex].cameraCoords.z)
+                    shop.cameraCoords.z)
 
-        SetCamRot(previewCam, Config.Shops[shopIndex].cameraRot.x,
+        SetCamRot(previewCam, shop.cameraRot.x,
 
-                  Config.Shops[shopIndex].cameraRot.y,
+                  shop.cameraRot.y,
 
-                  Config.Shops[shopIndex].cameraRot.z, 2)
+                  shop.cameraRot.z, 2)
 
         SetCamActive(previewCam, true)
 
@@ -1014,7 +1092,7 @@ function SetupCamera(shopIndex)
 
             print("debug: camera created for shop " ..
 
-                      Config.Shops[shopIndex].label)
+                      shop.label)
 
         end
 
@@ -1026,25 +1104,29 @@ function UpdateCameraZoom()
 
     if previewCam and activeShopIndex then
 
+        local shop = Config.Shops[activeShopIndex]
+
+        if not shop or not shop.previewCoords or not shop.cameraCoords then return end
+
         currentZoomDistance = currentZoomDistance +
 
                                   (targetZoomDistance - currentZoomDistance) *
 
                                   0.12
 
-        local sx, sy, sz = Config.Shops[activeShopIndex].previewCoords.x,
+        local sx, sy, sz = shop.previewCoords.x,
 
-                           Config.Shops[activeShopIndex].previewCoords.y,
+                           shop.previewCoords.y,
 
-                           Config.Shops[activeShopIndex].previewCoords.z
+                           shop.previewCoords.z
 
         local camDir = vector3(
 
-                           sx - Config.Shops[activeShopIndex].cameraCoords.x,
+                           sx - shop.cameraCoords.x,
 
-                           sy - Config.Shops[activeShopIndex].cameraCoords.y,
+                           sy - shop.cameraCoords.y,
 
-                           sz - Config.Shops[activeShopIndex].cameraCoords.z)
+                           sz - shop.cameraCoords.z)
 
         local length = #(camDir)
 
@@ -1082,9 +1164,13 @@ function SpawnPreviewVehicle(catIndex, vehIndex)
 
     if not activeShopIndex or previewSpawnInProgress then return end
 
+    local shop = Config.Shops[activeShopIndex]
+
+    if not shop or not shop.previewCoords then return end
+
     local now = GetGameTimer()
 
-    if now - lastPreviewSpawnTime < 500 then return end
+    if now - lastPreviewSpawnTime < previewSpawnCooldownMs then return end
 
     lastPreviewSpawnTime = now
 
@@ -1104,7 +1190,7 @@ function SpawnPreviewVehicle(catIndex, vehIndex)
 
     end
 
-    local cat = Config.Shops[activeShopIndex].categories[catIndex + 1]
+    local cat = shop.categories[catIndex + 1]
 
     if not cat then
 
@@ -1138,13 +1224,11 @@ function SpawnPreviewVehicle(catIndex, vehIndex)
 
     end
 
-    previewVehicle = CreateVehicle(model, Config.Shops[activeShopIndex]
+    previewVehicle = CreateVehicle(model, shop.previewCoords.x,
 
-                                       .previewCoords.x,
+                                   shop.previewCoords.y,
 
-                                   Config.Shops[activeShopIndex].previewCoords.y,
-
-                                   Config.Shops[activeShopIndex].previewCoords.z,
+                                   shop.previewCoords.z,
 
                                    previewHeading, false, false)
 
@@ -1326,7 +1410,25 @@ function SendVehicleStatsToUI(vehicle, vehData)
 
 end
 
-function RotatePreviewVehicle() end
+function RotatePreviewVehicle()
+
+    if not previewVehicle or previewHeading == nil or previewTargetHeading == nil then
+
+        return
+
+    end
+
+    local diff = previewTargetHeading - previewHeading
+
+    if diff > 180.0 then diff = diff - 360.0 end
+
+    if diff < -180.0 then diff = diff + 360.0 end
+
+    previewHeading = previewHeading + (diff * 0.22)
+
+    SetEntityHeading(previewVehicle, previewHeading)
+
+end
 
 function EngineSoundPreview()
 
@@ -1786,28 +1888,3 @@ RegisterNetEvent("risk-vehicleshop:spawnPurchasedVehicle",
 
 end)
 
-RegisterNetEvent('risk_weather:apply')
-
-AddEventHandler('risk_weather:apply', function()
-
-    Citizen.CreateThread(function()
-
-        while true do
-
-            Citizen.Wait(1000)
-
-            SetWeatherTypePersist("EXTRASUNNY")
-
-            SetWeatherTypeNowPersist("EXTRASUNNY")
-
-            SetWeatherTypeNow("EXTRASUNNY")
-
-            NetworkOverrideClockTime(12, 0, 0)
-
-            PauseClock(true)
-
-        end
-
-    end)
-
-end)
