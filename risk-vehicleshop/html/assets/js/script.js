@@ -121,7 +121,8 @@ $(document).ready(function () {
             isUiOpen = true
             $("#shopContainer").show()
             $("#shopContainer").focus()
-            $("#searchInput").focus()
+            $("#searchInput").val("")
+            $("#searchInput").blur()
             window.focus()
             document.body.focus()
             currentStats = {
@@ -244,6 +245,8 @@ $(document).ready(function () {
     const isTypingTarget = (el) =>
         el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
 
+    const passthroughKeys = new Set(['w', 's', 'W', 'S', 'ArrowUp', 'ArrowDown'])
+
         ;['keydown', 'keypress', 'keyup'].forEach(type => {
             window.addEventListener(type, (e) => {
                 if (!isUiOpen) return
@@ -253,6 +256,11 @@ $(document).ready(function () {
                     e.preventDefault()
                     e.stopPropagation()
                     triggerClose()
+                    return
+                }
+
+                // อนุญาตปุ่มควบคุมรถบางปุ่มให้ทะลุไปฝั่งเกม (เช่น เร่ง/ฟังเสียง)
+                if (passthroughKeys.has(e.key)) {
                     return
                 }
 
