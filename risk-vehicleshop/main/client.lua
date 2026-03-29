@@ -154,6 +154,10 @@ end
 
 function RecheckJobFramework()
 
+    local prevJob = currentJob
+
+    local prevGrade = currentJobGrade
+
     if currentFramework == "qbcore" then
 
         local c = exports['qb-core']:GetCoreObject()
@@ -203,6 +207,18 @@ function RecheckJobFramework()
             end
 
         end
+
+    end
+
+    if (prevJob ~= currentJob or prevGrade ~= currentJobGrade) and currentJob then
+
+        if Config.Debug then
+
+            print("debug: job changed on re-check -> respawn shops/blips")
+
+        end
+
+        RespawnAllShopEntities()
 
     end
 
@@ -269,6 +285,8 @@ CreateThread(function()
                               tostring(currentJobGrade))
 
                 end
+
+                RespawnAllShopEntities()
 
             end
 
@@ -353,6 +371,8 @@ CreateThread(function()
                               " grade -> " .. tostring(currentJobGrade))
 
                 end
+
+                RespawnAllShopEntities()
 
             end
 
@@ -874,6 +894,20 @@ end)
 
 function OpenVehicleShop(shopIndex)
 
+    local shop = Config.Shops[shopIndex]
+
+    if not shop or not shop.previewCoords or not shop.cameraCoords or not shop.cameraRot then
+
+        if Config.Debug then
+
+            print("debug: invalid shop preview config at index " .. tostring(shopIndex))
+
+        end
+
+        return
+
+    end
+
     uiOpen = true
 
     skipAnimation = true
@@ -902,37 +936,41 @@ function OpenVehicleShop(shopIndex)
 
         print("debug: vehicle shop ui opened -> " ..
 
-                  Config.Shops[shopIndex].label)
+                  shop.label)
 
     end
 
     SetupCamera(shopIndex)
 
-    previewHeading = Config.Shops[shopIndex].previewCoords.w
+    previewHeading = shop.previewCoords.w
 
-    currentZoomDistance = Config.Shops[shopIndex].defaultZoomDistance or 7.0
+    currentZoomDistance = shop.defaultZoomDistance or 7.0
 
-    targetZoomDistance = Config.Shops[shopIndex].defaultZoomDistance or 7.0
+    targetZoomDistance = shop.defaultZoomDistance or 7.0
 
     SendNUIMessage({
 
         action = "openUI",
 
-        categories = Config.Shops[shopIndex].categories
+        categories = shop.categories
 
     })
 
-    Wait(300)
+    if #shop.categories > 0 then
 
-    if #Config.Shops[shopIndex].categories > 0 then
-
-        if #Config.Shops[shopIndex].categories[1].vehicles > 0 then
+        if #shop.categories[1].vehicles > 0 then
 
             lastCatIndex = 0
 
             lastVehIndex = 0
 
-            SpawnPreviewVehicle(0, 0)
+            CreateThread(function()
+
+                Wait(0)
+
+                SpawnPreviewVehicle(0, 0)
+
+            end)
 
         end
 
@@ -990,21 +1028,35 @@ end
 
 function SetupCamera(shopIndex)
 
+    local shop = Config.Shops[shopIndex]
+
+    if not shop or not shop.cameraCoords or not shop.cameraRot then
+
+        if Config.Debug then
+
+            print("debug: invalid camera config for shop " .. tostring(shopIndex))
+
+        end
+
+        return
+
+    end
+
     if not previewCam then
 
         previewCam = CreateCam("DEFAULT_SCRIPTED_CAMERA", true)
 
-        SetCamCoord(previewCam, Config.Shops[shopIndex].cameraCoords.x,
+        SetCamCoord(previewCam, shop.cameraCoords.x,
 
-                    Config.Shops[shopIndex].cameraCoords.y,
+                    shop.cameraCoords.y,
 
-                    Config.Shops[shopIndex].cameraCoords.z)
+                    shop.cameraCoords.z)
 
-        SetCamRot(previewCam, Config.Shops[shopIndex].cameraRot.x,
+        SetCamRot(previewCam, shop.cameraRot.x,
 
-                  Config.Shops[shopIndex].cameraRot.y,
+                  shop.cameraRot.y,
 
-                  Config.Shops[shopIndex].cameraRot.z, 2)
+                  shop.cameraRot.z, 2)
 
         SetCamActive(previewCam, true)
 
@@ -1014,7 +1066,7 @@ function SetupCamera(shopIndex)
 
             print("debug: camera created for shop " ..
 
-                      Config.Shops[shopIndex].label)
+                      shop.label)
 
         end
 
@@ -1026,25 +1078,29 @@ function UpdateCameraZoom()
 
     if previewCam and activeShopIndex then
 
+        local shop = Config.Shops[activeShopIndex]
+
+        if not shop or not shop.previewCoords or not shop.cameraCoords then return end
+
         currentZoomDistance = currentZoomDistance +
 
                                   (targetZoomDistance - currentZoomDistance) *
 
                                   0.12
 
-        local sx, sy, sz = Config.Shops[activeShopIndex].previewCoords.x,
+        local sx, sy, sz = shop.previewCoords.x,
 
-                           Config.Shops[activeShopIndex].previewCoords.y,
+                           shop.previewCoords.y,
 
-                           Config.Shops[activeShopIndex].previewCoords.z
+                           shop.previewCoords.z
 
         local camDir = vector3(
 
-                           sx - Config.Shops[activeShopIndex].cameraCoords.x,
+                           sx - shop.cameraCoords.x,
 
-                           sy - Config.Shops[activeShopIndex].cameraCoords.y,
+                           sy - shop.cameraCoords.y,
 
-                           sz - Config.Shops[activeShopIndex].cameraCoords.z)
+                           sz - shop.cameraCoords.z)
 
         local length = #(camDir)
 
@@ -1082,6 +1138,10 @@ function SpawnPreviewVehicle(catIndex, vehIndex)
 
     if not activeShopIndex or previewSpawnInProgress then return end
 
+    local shop = Config.Shops[activeShopIndex]
+
+    if not shop or not shop.previewCoords then return end
+
     local now = GetGameTimer()
 
     if now - lastPreviewSpawnTime < 500 then return end
@@ -1104,7 +1164,7 @@ function SpawnPreviewVehicle(catIndex, vehIndex)
 
     end
 
-    local cat = Config.Shops[activeShopIndex].categories[catIndex + 1]
+    local cat = shop.categories[catIndex + 1]
 
     if not cat then
 
@@ -1138,13 +1198,11 @@ function SpawnPreviewVehicle(catIndex, vehIndex)
 
     end
 
-    previewVehicle = CreateVehicle(model, Config.Shops[activeShopIndex]
+    previewVehicle = CreateVehicle(model, shop.previewCoords.x,
 
-                                       .previewCoords.x,
+                                   shop.previewCoords.y,
 
-                                   Config.Shops[activeShopIndex].previewCoords.y,
-
-                                   Config.Shops[activeShopIndex].previewCoords.z,
+                                   shop.previewCoords.z,
 
                                    previewHeading, false, false)
 
