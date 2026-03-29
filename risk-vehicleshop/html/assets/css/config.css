@@ -1,0 +1,26 @@
+:root {
+    /* Main Colors */
+    --main-clr: #d67696;
+    --clr2: #ffffff;
+    --clr3: #d67696;
+    --clr4: #994e72;
+    --clr5: #784154;
+    --clr6: #87495e;
+    --clr7: #d67696;
+    --clr8: #ffffff;
+    --clr9: #ffffff;
+    --shadow-clr1: rgb(214 118 150 / 75%);
+    --shadow-clr2: rgb(214 118 150 / 75%);
+    --shadow-clr3: rgb(254 2 176 / 26%);
+    --shadow-clr4: rgb(254 2 153 / 35%);
+    --shadow-clr5: rgb(254 2 223 / 8%);
+
+    /* Background Colors */
+    --bg-clr1: rgb(255 134 223 / 25%);
+    --bg-clr2: rgb(254 2 165 / 5%);
+
+    /* Test Drive */
+    --testdrive-label-color: rgb(215 119 172 / 65%);
+    --testdrive-timer-color: #ffffff;
+    --testdrive-glow-color: rgba(255, 255, 255, 0);
+}
