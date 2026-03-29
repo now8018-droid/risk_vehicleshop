@@ -108,7 +108,7 @@ body {
     flex-direction: column;
     align-items: flex-start;
     gap: 1.8vh;
-    animation: fadeInSlide 0.9s ease forwards;
+    animation: none;
 }
 
 @keyframes fadeInSlide {
@@ -581,8 +581,8 @@ body {
     justify-content: center;
     align-items: center;
     gap: 0.7vh;
-    opacity: 0;
-    animation: fadeInSlide2 1s ease forwards;
+    opacity: 1;
+    animation: none;
 }
 
 @keyframes fadeInSlide2 {
@@ -636,7 +636,7 @@ body {
     justify-content: center;
     align-items: center;
     gap: 5.6064vh;
-    animation: fadeInSlide3 1s ease forwards;
+    animation: none;
 }
 
 @keyframes fadeInSlide3 {
@@ -705,7 +705,7 @@ body {
     justify-content: center;
     align-items: flex-end;
     gap: 3.2vh;
-    animation: fadeInSlide4 0.9s ease forwards;
+    animation: none;
 }
 
 @keyframes fadeInSlide4 {
@@ -837,7 +837,7 @@ body {
     stroke: var(--main-clr);
     stroke-linecap: round;
     filter: drop-shadow(0vh 0vh 1.2847vh var(--shadow-clr5));
-    animation: 1.5s animationcircles ease-in-out;
+    animation: none;
 }
 
 @keyframes animationcircles {

@@ -374,13 +374,6 @@ function buildCategories(categories) {
         )
         $("#categoriesContainer").append(catDiv)
     })
-    $(".box-category").each((idx, el) => {
-        $(el).css({
-            'opacity': '0',
-            'animation': 'fadeInCar 0.6s ease forwards',
-            'animation-delay': (0.1 * idx) + 's'
-        })
-    })
     $(".box-category").each(function () {
         $(this).prepend(svgCategory)
     })
@@ -446,13 +439,6 @@ function loadVehicles(catIndex, categories) {
             </div>`
         )
         $("#carsContainer").append(html)
-    })
-    $(".box-car").each(function (idx) {
-        $(this).css({
-            'opacity': '0',
-            'animation': 'fadeInCar 0.6s ease forwards',
-            'animation-delay': (0.1 * idx) + 's'
-        })
     })
     $(".box-car").each(function () {
         $(this).prepend(svgCar)
