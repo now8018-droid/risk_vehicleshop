@@ -936,8 +936,6 @@ function OpenVehicleShop(shopIndex)
 
     })
 
-    Wait(300)
-
     if #shop.categories > 0 then
 
         if #shop.categories[1].vehicles > 0 then
@@ -946,7 +944,13 @@ function OpenVehicleShop(shopIndex)
 
             lastVehIndex = 0
 
-            SpawnPreviewVehicle(0, 0)
+            CreateThread(function()
+
+                Wait(0)
+
+                SpawnPreviewVehicle(0, 0)
+
+            end)
 
         end
 
