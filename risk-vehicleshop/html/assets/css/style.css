@@ -98,7 +98,7 @@ body {
     flex-shrink: 0;
     border-radius: 38.2407vh;
     background: #141517;
-    filter: blur(7.4213vh);
+    display: none;
 }
 
 .left-flex {
@@ -108,7 +108,7 @@ body {
     flex-direction: column;
     align-items: flex-start;
     gap: 1.8vh;
-    animation: fadeInSlide 0.9s ease forwards;
+    animation: none;
 }
 
 @keyframes fadeInSlide {
@@ -133,7 +133,7 @@ body {
     width: 2.963vh;
     height: 2.8196vh;
     object-fit: contain;
-    filter: blur(1.5509vh);
+    opacity: 0.45;
 }
 
 .title-logo2 {
@@ -251,7 +251,7 @@ body {
     color: rgba(255, 255, 255, 0.47);
     justify-content: center;
     align-items: center;
-    transition: 0.3s ease;
+    transition: 0.12s ease;
 }
 
 .box-category:active {
@@ -288,8 +288,8 @@ body {
     width: 7.963vh;
     height: 13.3642vh;
     border-radius: 0.6481vh;
-    filter: drop-shadow(0vh 0vh 6.75vh 0vh var(--shadow-clr3));
-    transition: 0.3s ease;
+    filter: none;
+    transition: 0.12s ease;
 }
 
 .btm-left-right-flex {
@@ -360,7 +360,7 @@ body {
 
 .input-search-car::placeholder {
     color: rgba(255, 255, 255, 0.35);
-    transition: 0.3s ease;
+    transition: 0.12s ease;
 }
 
 .input-search-car:focus::placeholder {
@@ -402,7 +402,7 @@ body {
     align-self: stretch;
     align-items: center;
     fill: #fff;
-    transition: 0.3s ease;
+    transition: 0.12s ease;
 }
 
 @keyframes fadeInCar {
@@ -425,17 +425,17 @@ body {
 }
 
 .box-car:hover .box-car-bg {
-    filter: grayscale(0%);
+    opacity: 1;
 }
 
 .box-car:hover .car-icn {
     fill: var(--main-clr);
-    scale: 1.15;
-    filter: drop-shadow(0vh 0.3704vh 1.7222vh var(--shadow-clr4));
+    scale: 1.03;
+    filter: none;
 }
 
 .box-car:hover .car-icn-real {
-    scale: 1.15;
+    scale: 1.03;
 }
 
 .box-car:active {
@@ -445,8 +445,9 @@ body {
 .box-car-bg {
     position: absolute;
     height: 8.7963vh;
-    filter: grayscale(100%);
-    transition: 0.3s ease;
+    filter: none;
+    opacity: 0.75;
+    transition: 0.12s ease;
 }
 
 .line-car {
@@ -455,9 +456,9 @@ body {
     flex-shrink: 0;
     border-radius: 0vh 0.463vh 0.463vh 0vh;
     background: var(--main-clr);
-    box-shadow: 0vh 0vh 12.1111vh 0vh var(--shadow-clr1);
+    box-shadow: none;
     opacity: 0;
-    transition: 0.3s ease;
+    transition: 0.12s ease;
 }
 
 .car-icn {
@@ -468,8 +469,8 @@ body {
     width: 4.9074vh;
     height: 1.7593vh;
     flex-shrink: 0;
-    filter: drop-shadow(0vh 0vh 1.6019vh rgba(255, 255, 255, 0.25));
-    transition: 0.3s ease;
+    filter: none;
+    transition: 0.12s ease;
 }
 
 .box-car-active .line-car {
@@ -477,17 +478,17 @@ body {
 }
 
 .box-car-active .box-car-bg {
-    filter: grayscale(0%);
+    opacity: 1;
 }
 
 .box-car-active .car-icn {
     fill: var(--main-clr);
-    scale: 1.15;
-    filter: drop-shadow(0vh 0.3704vh 1.7222vh var(--shadow-clr4));
+    scale: 1.03;
+    filter: none;
 }
 
 .box-car-active .car-icn-real {
-    scale: 1.15;
+    scale: 1.03;
 }
 
 .box-car-cnt {
@@ -568,7 +569,7 @@ body {
     object-fit: contain;
     transform: translateX(-50%);
     z-index: 1;
-    transition: 0.3s ease;
+    transition: 0.12s ease;
 }
 
 .middle-top-name-flex {
@@ -581,8 +582,8 @@ body {
     justify-content: center;
     align-items: center;
     gap: 0.7vh;
-    opacity: 0;
-    animation: fadeInSlide2 1s ease forwards;
+    opacity: 1;
+    animation: none;
 }
 
 @keyframes fadeInSlide2 {
@@ -636,7 +637,7 @@ body {
     justify-content: center;
     align-items: center;
     gap: 5.6064vh;
-    animation: fadeInSlide3 1s ease forwards;
+    animation: none;
 }
 
 @keyframes fadeInSlide3 {
@@ -705,7 +706,7 @@ body {
     justify-content: center;
     align-items: flex-end;
     gap: 3.2vh;
-    animation: fadeInSlide4 0.9s ease forwards;
+    animation: none;
 }
 
 @keyframes fadeInSlide4 {
@@ -836,8 +837,8 @@ body {
     stroke-dashoffset: 0;
     stroke: var(--main-clr);
     stroke-linecap: round;
-    filter: drop-shadow(0vh 0vh 1.2847vh var(--shadow-clr5));
-    animation: 1.5s animationcircles ease-in-out;
+    filter: none;
+    animation: none;
 }
 
 @keyframes animationcircles {
@@ -852,7 +853,7 @@ body {
 .vehicle-info-icn {
     width: 1.55vh;
     height: 1.55vh;
-    filter: drop-shadow(0vh 0vh 1.6019vh rgba(255, 255, 255, 0.25));
+    filter: none;
 }
 
 @keyframes fadeInInfos {

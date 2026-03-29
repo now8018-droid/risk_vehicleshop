@@ -121,7 +121,8 @@ $(document).ready(function () {
             isUiOpen = true
             $("#shopContainer").show()
             $("#shopContainer").focus()
-            $("#searchInput").focus()
+            $("#searchInput").val("")
+            $("#searchInput").blur()
             window.focus()
             document.body.focus()
             currentStats = {
@@ -244,6 +245,8 @@ $(document).ready(function () {
     const isTypingTarget = (el) =>
         el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
 
+    const passthroughKeys = new Set(['w', 's', 'W', 'S', 'ArrowUp', 'ArrowDown'])
+
         ;['keydown', 'keypress', 'keyup'].forEach(type => {
             window.addEventListener(type, (e) => {
                 if (!isUiOpen) return
@@ -253,6 +256,11 @@ $(document).ready(function () {
                     e.preventDefault()
                     e.stopPropagation()
                     triggerClose()
+                    return
+                }
+
+                // อนุญาตปุ่มควบคุมรถบางปุ่มให้ทะลุไปฝั่งเกม (เช่น เร่ง/ฟังเสียง)
+                if (passthroughKeys.has(e.key)) {
                     return
                 }
 
@@ -374,13 +382,6 @@ function buildCategories(categories) {
         )
         $("#categoriesContainer").append(catDiv)
     })
-    $(".box-category").each((idx, el) => {
-        $(el).css({
-            'opacity': '0',
-            'animation': 'fadeInCar 0.6s ease forwards',
-            'animation-delay': (0.1 * idx) + 's'
-        })
-    })
     $(".box-category").each(function () {
         $(this).prepend(svgCategory)
     })
@@ -447,13 +448,6 @@ function loadVehicles(catIndex, categories) {
         )
         $("#carsContainer").append(html)
     })
-    $(".box-car").each(function (idx) {
-        $(this).css({
-            'opacity': '0',
-            'animation': 'fadeInCar 0.6s ease forwards',
-            'animation-delay': (0.1 * idx) + 's'
-        })
-    })
     $(".box-car").each(function () {
         $(this).prepend(svgCar)
     })
@@ -485,6 +479,22 @@ function loadVehicles(catIndex, categories) {
 
 let rotating = false
 let lastX = 0
+let queuedRotateDx = 0
+let rotateFlushTimer = null
+let lastWheelSentAt = 0
+
+function flushRotateDx() {
+    if (!isUiOpen) {
+        queuedRotateDx = 0
+        rotateFlushTimer = null
+        return
+    }
+    if (queuedRotateDx !== 0) {
+        $.post(`https://${resourceName}/uiRotate`, JSON.stringify({ dx: queuedRotateDx }))
+        queuedRotateDx = 0
+    }
+    rotateFlushTimer = null
+}
 
 
 document.addEventListener('mousedown', (e) => {
@@ -498,13 +508,21 @@ document.addEventListener('mousedown', (e) => {
 
 document.addEventListener('mouseup', () => {
     rotating = false
+    if (rotateFlushTimer) {
+        clearTimeout(rotateFlushTimer)
+        rotateFlushTimer = null
+    }
+    flushRotateDx()
 })
 
 document.addEventListener('mousemove', (e) => {
     if (!isUiOpen || !rotating) return
     const dx = e.clientX - lastX
     lastX = e.clientX
-    $.post(`https://${resourceName}/uiRotate`, JSON.stringify({ dx }))
+    queuedRotateDx += dx
+    if (!rotateFlushTimer) {
+        rotateFlushTimer = setTimeout(flushRotateDx, 33)
+    }
 })
 
 
@@ -534,6 +552,11 @@ document.addEventListener('wheel', (e) => {
   }
 
 
+  const now = performance.now()
+  if (now - lastWheelSentAt < 40) {
+    return
+  }
+  lastWheelSentAt = now
   $.post(`https://${resourceName}/uiWheel`, JSON.stringify({ delta: e.deltaY }))
   e.preventDefault() 
 }, { passive: false })
