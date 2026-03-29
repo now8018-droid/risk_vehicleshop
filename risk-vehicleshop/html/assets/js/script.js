@@ -377,8 +377,8 @@ function buildCategories(categories) {
     $(".box-category").each((idx, el) => {
         $(el).css({
             'opacity': '0',
-            'animation': 'fadeInCar 0.6s ease forwards',
-            'animation-delay': (0.1 * idx) + 's'
+            'animation': 'fadeInCar 0.15s ease-out forwards',
+            'animation-delay': (0.02 * idx) + 's'
         })
     })
     $(".box-category").each(function () {
@@ -401,10 +401,10 @@ function buildCategories(categories) {
             $("#main-brand").text(categories[i].vehicles[0].displayName)
             $("#main-model").text("")
             animatePriceChange(currentPrice, newPrice)
-            setTimeout(() => { currentPrice = newPrice }, 500)
+            setTimeout(() => { currentPrice = newPrice }, 120)
         } else {
             animatePriceChange(currentPrice, 0)
-            setTimeout(() => { currentPrice = 0 }, 500)
+            setTimeout(() => { currentPrice = 0 }, 120)
             currentVehicle = { spawnName: "", price: 0 }
             $("#main-brand").text("")
             $("#main-model").text("")
@@ -450,8 +450,8 @@ function loadVehicles(catIndex, categories) {
     $(".box-car").each(function (idx) {
         $(this).css({
             'opacity': '0',
-            'animation': 'fadeInCar 0.6s ease forwards',
-            'animation-delay': (0.1 * idx) + 's'
+            'animation': 'fadeInCar 0.15s ease-out forwards',
+            'animation-delay': (0.02 * idx) + 's'
         })
     })
     $(".box-car").each(function () {
