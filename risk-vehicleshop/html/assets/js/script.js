@@ -20,7 +20,13 @@ let currentStats = {
 }
 let currentPrice = 0
 let currentVehicle = { spawnName: "", price: 0 }
+let currentCategories = []
 let isUiOpen = false
+let previewSelectDebounce = null
+let rotateFlushTimer = null
+let pendingRotateDx = 0
+let wheelFlushTimer = null
+let pendingWheelDelta = 0
 
 const primaryColorData = [
     { r: 255, g: 255, b: 246 },
@@ -50,6 +56,15 @@ function rgbToHex(r, g, b) {
         const hex = x.toString(16)
         return hex.length === 1 ? "0" + hex : hex
     }).join("")
+}
+
+function escapeHtml(value) {
+    return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
 }
 
 function setCircleFill(circleIndex, fill) {
@@ -119,9 +134,11 @@ $(document).ready(function () {
         let data = event.data
         if (data.action === "openUI") {
             isUiOpen = true
+            currentCategories = data.categories || []
             $("#shopContainer").show()
             $("#shopContainer").focus()
-            $("#searchInput").focus()
+            $("#searchInput").val("").trigger("input")
+            $("#searchInput").blur()
             window.focus()
             document.body.focus()
             currentStats = {
@@ -146,25 +163,35 @@ $(document).ready(function () {
             $(".vehicle-info-flex").eq(3).find(".vehicle-info-percent").text("")
             setCircleFill(4, 0)
             $(".vehicle-info-flex").eq(4).find(".vehicle-info-percent").text("0")
-            buildCategories(data.categories)
-            loadVehicles(0, data.categories)
-            $("#car-list-amount").text(data.categories[0].vehicles.length)
-            $("#main-category").text(data.categories[0].name.toUpperCase())
-            if (data.categories[0].vehicles.length > 0) {
-                let newPrice = data.categories[0].vehicles[0].price
-                currentVehicle = {
-                    spawnName: data.categories[0].vehicles[0].spawnName,
-                    price: newPrice
+            buildCategories(currentCategories)
+            if (currentCategories.length > 0) {
+                loadVehicles(0, currentCategories)
+                $("#car-list-amount").text(currentCategories[0].vehicles.length)
+                $("#main-category").text(currentCategories[0].name.toUpperCase())
+                if (currentCategories[0].vehicles.length > 0) {
+                    let newPrice = currentCategories[0].vehicles[0].price
+                    currentVehicle = {
+                        spawnName: currentCategories[0].vehicles[0].spawnName,
+                        price: newPrice
+                    }
+                    $("#main-brand").text(currentCategories[0].vehicles[0].displayName)
+                    $("#main-model").text("")
+                    animatePriceChange(currentPrice, newPrice)
+                    setTimeout(() => { currentPrice = newPrice }, 500)
+                } else {
+                    animatePriceChange(currentPrice, 0)
+                    setTimeout(() => { currentPrice = 0 }, 500)
+                    $("#main-brand").text("")
+                    $("#main-model").text("")
                 }
-                $("#main-brand").text(data.categories[0].vehicles[0].displayName)
-                $("#main-model").text("")
-                animatePriceChange(currentPrice, newPrice)
-                setTimeout(() => { currentPrice = newPrice }, 500)
             } else {
-                animatePriceChange(currentPrice, 0)
-                setTimeout(() => { currentPrice = 0 }, 500)
+                $("#carsContainer").empty()
+                $("#car-list-amount").text("0")
+                $("#main-category").text("")
                 $("#main-brand").text("")
                 $("#main-model").text("")
+                animatePriceChange(currentPrice, 0)
+                setTimeout(() => { currentPrice = 0 }, 500)
             }
         }
         if (data.action === "closeUI") {
@@ -295,7 +322,7 @@ $(document).ready(function () {
     $("#searchInput").on("input", function () {
         let val = $(this).val().toLowerCase()
         $(".box-car").each(function () {
-            let txt = $(this).find(".title2-car").text().toLowerCase()
+            let txt = ($(this).data("search") || "").toString()
             if (txt.indexOf(val) !== -1) {
                 $(this).show()
             } else {
@@ -303,7 +330,61 @@ $(document).ready(function () {
             }
         })
     })
+
+    $(document).on("click", ".box-category", function () {
+        if (!currentCategories || currentCategories.length === 0) return
+        $(".box-category").removeClass("box-category-active")
+        $(this).addClass("box-category-active")
+        let i = $(this).data("catindex")
+        postPreviewSelection(i, 0)
+        loadVehicles(i, currentCategories)
+        $("#car-list-amount").text(currentCategories[i].vehicles.length)
+        $("#main-category").text(currentCategories[i].name.toUpperCase())
+        if (currentCategories[i].vehicles.length > 0) {
+            let newPrice = currentCategories[i].vehicles[0].price
+            currentVehicle = {
+                spawnName: currentCategories[i].vehicles[0].spawnName,
+                price: newPrice
+            }
+            $("#main-brand").text(currentCategories[i].vehicles[0].displayName)
+            $("#main-model").text("")
+            animatePriceChange(currentPrice, newPrice)
+            setTimeout(() => { currentPrice = newPrice }, 500)
+        } else {
+            animatePriceChange(currentPrice, 0)
+            setTimeout(() => { currentPrice = 0 }, 500)
+            currentVehicle = { spawnName: "", price: 0 }
+            $("#main-brand").text("")
+            $("#main-model").text("")
+        }
+    })
+
+    $(document).on("click", ".box-car", function () {
+        if (!currentCategories || currentCategories.length === 0) return
+        $(".box-car").removeClass("box-car-active")
+        $(this).addClass("box-car-active")
+        let cIndex = $(this).data("catindex")
+        let vIndex = $(this).data("vehindex")
+        let veh = currentCategories[cIndex].vehicles[vIndex]
+        $("#main-category").text(currentCategories[cIndex].name.toUpperCase())
+        $("#main-brand").text(veh.displayName)
+        $("#main-model").text("")
+        animatePriceChange(currentPrice, veh.price)
+        setTimeout(() => { currentPrice = veh.price }, 500)
+        currentVehicle = {
+            spawnName: veh.spawnName,
+            price: veh.price
+        }
+        postPreviewSelection(cIndex, vIndex)
+    })
 })
+
+function postPreviewSelection(catIndex, vehIndex) {
+    clearTimeout(previewSelectDebounce)
+    previewSelectDebounce = setTimeout(() => {
+        $.post(`https://${resourceName}/null`, JSON.stringify({ catIndex, vehIndex }))
+    }, 80)
+}
 
 function buildColorPickers() {
     let primaryContainer = $(".colors1-flex")
@@ -365,64 +446,30 @@ function buildColorPickers() {
 }
 
 function buildCategories(categories) {
-    $("#categoriesContainer").empty()
-    $.each(categories, (i, cat) => {
-        let catDiv = (
-            `<div class="box-category" data-catindex="${i}">
-                <p class="category-name">${cat.name}</p>
-            </div>`
-        )
-        $("#categoriesContainer").append(catDiv)
-    })
-    $(".box-category").each((idx, el) => {
-        $(el).css({
-            'opacity': '0',
-            'animation': 'fadeInCar 0.6s ease forwards',
-            'animation-delay': (0.1 * idx) + 's'
-        })
-    })
-    $(".box-category").each(function () {
-        $(this).prepend(svgCategory)
-    })
-    $(".box-category").click(function () {
-        $(".box-category").removeClass("box-category-active")
-        $(this).addClass("box-category-active")
-        let i = $(this).data("catindex")
-        $.post(`https://${resourceName}/null`, JSON.stringify({ catIndex: i, vehIndex: 0 }))
-        loadVehicles(i, categories)
-        $("#car-list-amount").text(categories[i].vehicles.length)
-        $("#main-category").text(categories[i].name.toUpperCase())
-        if (categories[i].vehicles.length > 0) {
-            let newPrice = categories[i].vehicles[0].price
-            currentVehicle = {
-                spawnName: categories[i].vehicles[0].spawnName,
-                price: newPrice
-            }
-            $("#main-brand").text(categories[i].vehicles[0].displayName)
-            $("#main-model").text("")
-            animatePriceChange(currentPrice, newPrice)
-            setTimeout(() => { currentPrice = newPrice }, 500)
-        } else {
-            animatePriceChange(currentPrice, 0)
-            setTimeout(() => { currentPrice = 0 }, 500)
-            currentVehicle = { spawnName: "", price: 0 }
-            $("#main-brand").text("")
-            $("#main-model").text("")
-        }
-    })
+    const categoryHtml = categories.map((cat, i) => (
+        `<div class="box-category" data-catindex="${i}" style="opacity:0;animation:fadeInCar 0.6s ease forwards;animation-delay:${(0.1 * i)}s">
+            ${svgCategory}
+            <p class="category-name">${escapeHtml(cat.name)}</p>
+        </div>`
+    )).join("")
+    $("#categoriesContainer").html(categoryHtml)
     $(".box-category").first().addClass("box-category-active")
 }
 
 function loadVehicles(catIndex, categories) {
-    $("#carsContainer").empty()
     let vehicles = categories[catIndex].vehicles
-    $.each(vehicles, (index, veh) => {
+    const vehicleHtml = vehicles.map((veh, index) => {
         let hasImage = (veh.image && veh.image !== "")
-        let html = (
-            `<div class="box-car" data-vehindex="${index}" data-catindex="${catIndex}">
+        const safeCategoryName = escapeHtml(categories[catIndex].name)
+        const safeDisplayName = escapeHtml(veh.displayName)
+        const safeImage = escapeHtml(veh.image || "")
+        const searchText = escapeHtml((veh.displayName || "").toLowerCase())
+        return (
+            `<div class="box-car" data-vehindex="${index}" data-catindex="${catIndex}" data-search="${searchText}" style="opacity:0;animation:fadeInCar 0.6s ease forwards;animation-delay:${(0.1 * index)}s">
                 <div class="line-car"></div>
+                ${svgCar}
                 ${hasImage
-                ? `<img class="car-icn-real" src="../html/assets/img/cars/${veh.image}" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">`
+                ? `<img class="car-icn-real" src="../html/assets/img/cars/${safeImage}" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">`
                 : ``
             }
                 <svg class="car-icn" style="display:${hasImage ? 'none' : 'block'};" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 53 19">
@@ -432,8 +479,8 @@ function loadVehicles(catIndex, categories) {
                 </svg>
                 <div class="box-car-cnt">
                     <div class="car-cnt-title-flex">
-                        <p class="title1-car">${categories[catIndex].name}</p>
-                        <p class="title2-car">${veh.displayName}</p>
+                        <p class="title1-car">${safeCategoryName}</p>
+                        <p class="title2-car">${safeDisplayName}</p>
                     </div>
                     <div class="car-price-flex">
                         <div class="line-price"></div>
@@ -445,38 +492,8 @@ function loadVehicles(catIndex, categories) {
                 </div>
             </div>`
         )
-        $("#carsContainer").append(html)
-    })
-    $(".box-car").each(function (idx) {
-        $(this).css({
-            'opacity': '0',
-            'animation': 'fadeInCar 0.6s ease forwards',
-            'animation-delay': (0.1 * idx) + 's'
-        })
-    })
-    $(".box-car").each(function () {
-        $(this).prepend(svgCar)
-    })
-    $(".box-car").click(function () {
-        $(".box-car").removeClass("box-car-active")
-        $(this).addClass("box-car-active")
-        let cIndex = $(this).data("catindex")
-        let vIndex = $(this).data("vehindex")
-        let veh = categories[cIndex].vehicles[vIndex]
-        $("#main-category").text(categories[cIndex].name.toUpperCase())
-        $("#main-brand").text(veh.displayName)
-        $("#main-model").text("")
-        animatePriceChange(currentPrice, veh.price)
-        setTimeout(() => { currentPrice = veh.price }, 500)
-        currentVehicle = {
-            spawnName: veh.spawnName,
-            price: veh.price
-        }
-        $.post(`https://${resourceName}/null`, JSON.stringify({
-            catIndex: cIndex,
-            vehIndex: vIndex
-        }))
-    })
+    }).join("")
+    $("#carsContainer").html(vehicleHtml)
     if (vehicles.length > 0) {
         $(".box-car").first().addClass("box-car-active")
     }
@@ -504,7 +521,14 @@ document.addEventListener('mousemove', (e) => {
     if (!isUiOpen || !rotating) return
     const dx = e.clientX - lastX
     lastX = e.clientX
-    $.post(`https://${resourceName}/uiRotate`, JSON.stringify({ dx }))
+    pendingRotateDx += dx
+    if (!rotateFlushTimer) {
+        rotateFlushTimer = setTimeout(() => {
+            $.post(`https://${resourceName}/uiRotate`, JSON.stringify({ dx: pendingRotateDx }))
+            pendingRotateDx = 0
+            rotateFlushTimer = null
+        }, 16)
+    }
 })
 
 
@@ -534,6 +558,13 @@ document.addEventListener('wheel', (e) => {
   }
 
 
-  $.post(`https://${resourceName}/uiWheel`, JSON.stringify({ delta: e.deltaY }))
+  pendingWheelDelta += e.deltaY
+  if (!wheelFlushTimer) {
+    wheelFlushTimer = setTimeout(() => {
+      $.post(`https://${resourceName}/uiWheel`, JSON.stringify({ delta: pendingWheelDelta }))
+      pendingWheelDelta = 0
+      wheelFlushTimer = null
+    }, 30)
+  }
   e.preventDefault() 
 }, { passive: false })
