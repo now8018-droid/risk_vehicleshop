@@ -577,20 +577,3 @@ RegisterNetEvent("risk-vehicleshop:testDriveRemoveKey", function(plate, model, n
 
 end)
 
-Citizen.CreateThread(function()
-
-    while true do
-
-        Citizen.Wait(10000)
-
-        TriggerClientEvent('risk_weather:apply', -1)
-
-    end
-
-end)
-
-AddEventHandler('playerConnecting', function()
-
-    TriggerClientEvent('risk_weather:apply', source)
-
-end)

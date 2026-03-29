@@ -1888,28 +1888,3 @@ RegisterNetEvent("risk-vehicleshop:spawnPurchasedVehicle",
 
 end)
 
-RegisterNetEvent('risk_weather:apply')
-
-AddEventHandler('risk_weather:apply', function()
-
-    Citizen.CreateThread(function()
-
-        while true do
-
-            Citizen.Wait(1000)
-
-            SetWeatherTypePersist("EXTRASUNNY")
-
-            SetWeatherTypeNowPersist("EXTRASUNNY")
-
-            SetWeatherTypeNow("EXTRASUNNY")
-
-            NetworkOverrideClockTime(12, 0, 0)
-
-            PauseClock(true)
-
-        end
-
-    end)
-
-end)
