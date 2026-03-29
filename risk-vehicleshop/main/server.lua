@@ -46,15 +46,13 @@ function GeneratePlate()
 
         if Config.Debug then print("debug: using random plate") end
 
-        local p = Config.PlateOptions.prefix or "RISK"
-
         local letters, nums = "", ""
 
-        for i = 1, (Config.PlateOptions.letters or 2) do letters = letters .. string.char(math.random(65, 90)) end
+        for i = 1, 3 do letters = letters .. string.char(math.random(65, 90)) end
 
-        for i = 1, (Config.PlateOptions.numbers or 3) do nums = nums .. tostring(math.random(0, 9)) end
+        for i = 1, 3 do nums = nums .. tostring(math.random(0, 9)) end
 
-        return p .. letters .. nums
+        return letters .. " " .. nums
 
     end
 
