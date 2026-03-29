@@ -52,7 +52,9 @@ function GeneratePlate()
 
         for i = 1, 3 do nums = nums .. tostring(math.random(0, 9)) end
 
-        return letters .. " " .. nums
+        -- GTA plate text has an 8-char limit; adding one leading space helps
+        -- visually center the 7-char pattern "XXX 123" on the plate.
+        return " " .. letters .. " " .. nums
 
     end
 
